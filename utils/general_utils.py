@@ -104,7 +104,7 @@ def plot_circles(
             # label = f"{str(row.coordinate)}"
             x = 0
             for val in row.colour_values:
-            #     x += val
+                x += val
             # print(x)
             # print(len(row.colour_values))
             x = x/len(row.colour_values)
