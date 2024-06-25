@@ -49,11 +49,11 @@ def find_circles(
         maxRadius=maxRadius
     )
     
-    # Convert image to grayscale (optional, depending on input format)
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # # Convert image to grayscale (optional, depending on input format)
+    # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Convert grayscale image to black and white (binary)
-    _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
+    _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
 
     circles = np.uint16(np.around(circles))
     data = []
