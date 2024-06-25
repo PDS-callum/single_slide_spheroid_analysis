@@ -94,24 +94,26 @@ def find_circles(
 
 def plot_circles(
         image,
-        df
+        df,
+        threshold:int=20
 ):
     a=0
     for i, row in df.iterrows():
-        if a<10:
-            cv2.circle(image, row.coordinate, row.radius, (255, 0, 0), 2)
+        if a<10000000:
             font = cv2.FONT_HERSHEY_SIMPLEX
             # label = f"{str(row.coordinate)}"
             x = 0
             for val in row.colour_values:
-                x += val
-            print(x)
-            print(len(row.colour_values))
+            #     x += val
+            # print(x)
+            # print(len(row.colour_values))
             x = x/len(row.colour_values)
-            print(x)
-            print(" ")
-            label = f"{x}"
-            cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
+            # print(x)
+            # print(" ")
+            if x<threshold:
+                cv2.circle(image, row.coordinate, row.radius, (255, 0, 0), 2)
+                label = f"{x}"
+                cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
             a+=1
     return image
 
