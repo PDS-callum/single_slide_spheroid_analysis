@@ -6,13 +6,17 @@ import os
 import plotly.express as px
 import base64
 
-def data_uri_to_cv2_img(uri):
+def data_uri_to_cv2_img(
+        uri
+):
     encoded_data = uri.split(',')[1]
     nparr = np.fromstring(base64.b64decode(encoded_data), np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     return img
 
-def read_image(path):
+def read_image(
+        path
+):
     return cv2.imread(path)
 
 def gray(
@@ -48,27 +52,19 @@ def find_circles(
         minRadius=minRadius, 
         maxRadius=maxRadius
     )
-    
-    # # Convert image to grayscale (optional, depending on input format)
-    # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Convert grayscale image to black and white (binary)
     _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
 
     circles = np.uint16(np.around(circles))
     data = []
     for i in circles[0, :]:
-        # Extract center coordinates and radius
         x, y, r = i[0], i[1], i[2]
-
-        # Create a mask for the circle
+        
         mask = np.zeros_like(image, dtype="uint8")
         cv2.circle(mask, (x, y), r, (255, 255, 255), -1)
-
-        # Get pixel values within the circle mask
+        
         colour_vals = binary_image[mask == 255]
-
-        # Add data to list
+        
         data.append({
             "coordinate": (x, y),
             "radius": r,
@@ -78,43 +74,25 @@ def find_circles(
             test = mask + test
         except:
             test = mask
-    # import matplotlib.pyplot as plt
-    # import matplotlib.image as mpimg
-    # imgplot = plt.imshow(test)
-    # plt.show()
     df = pd.DataFrame(data)
     return df
-
-    # coordinates = [(x[0],x[1]) for x in np.uint16(np.around(circles))[0, :]]
-    # radii = [x[2] for x in np.uint16(np.around(circles))[0, :]]
-    # return pd.DataFrame({
-    #     "coordinate":coordinates,
-    #     "radius":radii
-    # })
 
 def plot_circles(
         image,
         df,
-        threshold:int=20
+        threshold
 ):
     a=0
     for i, row in df.iterrows():
-        if a<10000000:
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            # label = f"{str(row.coordinate)}"
-            x = 0
-            for val in row.colour_values:
-                x += val
-            # print(x)
-            # print(len(row.colour_values))
-            x = x/len(row.colour_values)
-            # print(x)
-            # print(" ")
-            if x<threshold:
-                cv2.circle(image, row.coordinate, row.radius, (255, 0, 0), 2)
-                label = f"{x}"
-                cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
-            a+=1
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        x = 0
+        for val in row.colour_values:
+            x += val
+        x = x/len(row.colour_values)
+        if x<threshold:
+            cv2.circle(image, row.coordinate, row.radius, (255, 0, 0), 2)
+            label = f"{x}"
+            cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
     return image
 
 def plot(
@@ -171,7 +149,10 @@ def annotate_images(
         circles_data_df.to_csv(f"{save_dir}/1_size_analysis.csv",index=False)
     return circles_data_df
 
-def get_radii_hist(df,file_name):
+def get_radii_hist(
+        df,
+        file_name
+):
     query_df = df.query("file_name == @file_name").copy()
     radii_list = query_df.radii.values[0].split(",")
     fig = px.histogram(radii_list)
