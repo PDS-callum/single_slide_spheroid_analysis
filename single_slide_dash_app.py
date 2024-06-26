@@ -8,6 +8,7 @@ from utils.general_utils import *
 from dash_canvas.utils import array_to_data_url
 import plotly.graph_objects as go
 import json
+import pandas as pd
 
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
