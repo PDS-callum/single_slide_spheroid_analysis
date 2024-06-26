@@ -88,7 +88,7 @@ app.layout = html.Div([
 ])
 
 @callback(
-        Output("data_store","data"),
+        Output("data_store","data", allow_duplicate=True),
         Input("threshold_input","value"),
         State("data_store","data"),
         prevent_initial_call=True
@@ -102,7 +102,7 @@ def update_threshold(
     print(data_store)
     return json.dumps(data_store)
 
-@callback([Output("image","src"), Output("data_store","data"), Output("image_data_store","data")],
+@callback([Output("image","src"), Output("data_store","data", allow_duplicate=True), Output("image_data_store","data", allow_duplicate=True)],
           [Input("upload-image", "contents")],
           [State("upload-image", "filename"), State("data_store","data"), State("image_data_store","data")],
           prevent_initial_call=True)
