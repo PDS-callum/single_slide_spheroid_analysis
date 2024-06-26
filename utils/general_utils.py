@@ -5,6 +5,77 @@ from matplotlib import pyplot as plt
 import os
 import plotly.express as px
 import base64
+from PIL import Image
+from io import BytesIO
+import json
+
+def json_to_dict(data_store):
+    if data_store:
+        return json.loads(data_store)
+    else:
+        return {}
+
+def proc_blur_image(contents):
+    in_img = data_uri_to_cv2_img(contents)
+    gray_img = gray(in_img)
+    blurred_img = blur(gray_img,11,type="median")
+    return blurred_img
+
+def proc_image(contents,threshold):
+    blurred_img = proc_blur_image(contents)
+    circles_df = find_circles(
+        image=blurred_img,
+        method=cv2.HOUGH_GRADIENT, 
+        dp=1, 
+        minDist=100,
+        param1=20, 
+        param2=30, 
+        minRadius=25, 
+        maxRadius=100
+    )
+    return circles_df
+
+def draw_circles(contents,circles_df,threshold):
+    blurred_img = proc_blur_image(contents)
+    annotated_img = plot_circles(
+        blurred_img,
+        circles_df,
+        threshold=threshold
+    )
+    return annotated_img
+
+def data_url_to_array(data_url):
+    """
+    Converts a data URL containing an image to a NumPy array.
+
+    This function assumes the data URL is in the format:
+    data:image/png;base64,<base64_encoded_image_data>
+
+    Parameters:
+        data_url (str): The data URL containing the image.
+
+    Returns:
+        numpy.ndarray: The image data as a NumPy array.
+
+    Raises:
+        ValueError: If the data URL is not in the expected format.
+    """
+    if not data_url.startswith("data:image/"):
+        raise ValueError("Invalid data URL format. Expected to start with 'data:image/'")
+    
+    # Split the data URL into parts
+    header, encoded_data = data_url.split(",", 1)
+    # Extract image format from header
+    image_format = header.split("/")[1].split(";")[0]
+
+    # Decode base64 data
+    decoded_data = base64.b64decode(encoded_data)
+
+    # Use PIL to convert to NumPy array
+    with BytesIO(decoded_data) as buffer:
+        img = Image.open(buffer)
+        return np.array(img)
+
 
 def data_uri_to_cv2_img(
         uri
@@ -90,7 +161,7 @@ def plot_circles(
             x += val
         x = x/len(row.colour_values)
         if x<threshold:
-            cv2.circle(image, row.coordinate, row.radius, (255, 0, 0), 2)
+            cv2.circle(image, row.coordinate, int(row.radius), (255, 0, 0), 2)
             label = f"{x}"
             cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
     return image
