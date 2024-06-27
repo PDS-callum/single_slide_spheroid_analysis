@@ -154,6 +154,7 @@ def plot_circles(
         threshold
 ):
     a=0
+    drawn = []
     for i, row in df.iterrows():
         font = cv2.FONT_HERSHEY_SIMPLEX
         x = 0

@@ -17,6 +17,7 @@ app = Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = html.Div([
     dcc.Upload(
         id="upload-image",
+        multiple=True,
         children=html.Div([
             "Drag and Drop or ",
             html.A("Select Files")
@@ -61,30 +62,99 @@ app.layout = html.Div([
             "textAlign": "right",
             # "margin": "10px"
         }),
-    dcc.Tabs([
-        dcc.Tab(label="Original image", children=[
-            html.Div(id="output-image-upload",children=[
-                html.Img(id="image",src="", style={"height": "1000px"})
-            ], style={"display": "flex", "justify-content": "center", "align-items": "center"})
+    dcc.Download(id="download-dataframe-csv"),
+    dcc.Tabs(
+        id="main_tabs", 
+        value="original_image", 
+        children=[
+            dcc.Tab(
+                label="Original image", 
+                value="original_image", 
+                children=[
+                    html.Div(
+                        id="output-image-upload",
+                        children=[
+                            html.Img(
+                                id="image",
+                                src="", 
+                                style={
+                                    "height": "1000px"
+                                })], 
+                                style={
+                                    "display": "flex", 
+                                    "justify-content": "center", 
+                                    "align-items": "center"
+                                })
         ]),
-        dcc.Tab(label="Thresholded image", children=[
-            html.Div(id="thresholded-output-image-upload",children=[
-                html.Img(id="thresholded_annotated_image",src="", style={"height": "1000px"})
-            ], style={"display": "flex", "justify-content": "center", "align-items": "center"})
+        dcc.Tab(
+            label="Thresholded image", 
+            value="threshold_image", 
+            children=[
+                html.Div(
+                    id="thresholded-output-image-upload",
+                    children=[
+                        html.Img(
+                            id="thresholded_annotated_image",
+                            src="", 
+                            style={
+                                "height": "1000px"
+                            })], 
+                            style={
+                                "display": "flex", 
+                                "justify-content": "center", 
+                                "align-items": "center"
+                            })
         ]),
-        dcc.Tab(label="Unthresholded image", children=[
-            html.Div(id="unthresholded-output-image-upload",children=[
-                html.Img(id="unthresholded_annotated_image",src="", style={"height": "1000px"})
-            ], style={"display": "flex", "justify-content": "center", "align-items": "center"})
+        dcc.Tab(
+            label="Unthresholded image", 
+            value="unthreshold_image", 
+            children=[
+                html.Div(
+                    id="unthresholded-output-image-upload",
+                    children=[
+                        html.Img(
+                            id="unthresholded_annotated_image",
+                            src="", 
+                            style={
+                                "height": "1000px"
+                            })], 
+                            style={
+                                "display": "flex", 
+                                "justify-content": "center", 
+                                "align-items": "center"
+                            })
         ]),
-        dcc.Tab(label="Histogram", children=[
-            dcc.Graph(id="histo", figure=go.Figure()),
-            dcc.Graph(id="box", figure=go.Figure())
-        ])
-    ]),
-    dcc.Store(id="data_store",data=json.dumps({"filename":"","threshold":26})),
-    dcc.Store(id="image_data_store",data=json.dumps({"filename":[]})),
-    dcc.Store(id="current_image_data",data=None)
+        dcc.Tab(
+            label="Histogram", 
+            value="graphs", 
+            children=[
+                dcc.Graph(
+                    id="histo",
+                    figure=go.Figure()
+                ),
+                dcc.Graph(
+                    id="box", 
+                    figure=go.Figure()
+                )
+            ])
+        ]),
+    dcc.Store(
+        id="data_store",
+        data=json.dumps({
+            "filename":"",
+            "threshold":26
+        })
+    ),
+    dcc.Store(
+        id="image_data_store",
+        data=json.dumps({
+            "filename":[]
+        })
+    ),
+    dcc.Store(
+        id="current_image_data",
+        data=None
+    )
 ])
 
 @callback(
@@ -102,27 +172,35 @@ def update_threshold(
     print(data_store)
     return json.dumps(data_store)
 
-@callback([Output("image","src"), Output("data_store","data", allow_duplicate=True), Output("image_data_store","data", allow_duplicate=True)],
+@callback([Output("image","src"), Output("data_store","data", allow_duplicate=True), Output("image_data_store","data", allow_duplicate=True),Output("download-dataframe-csv", "data")],
           [Input("upload-image", "contents")],
           [State("upload-image", "filename"), State("data_store","data"), State("image_data_store","data")],
           prevent_initial_call=True)
 def push_image(
     contents,
-    filename,
+    filenames,
     data_store,
     image_data_store
 ):
     data_store = json_to_dict(data_store)
-    data_store["filename"] = filename
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
-    if filename not in image_data_store.filename:
-        circles_df = proc_image(contents,data_store["threshold"])
-        circles_df["filename"] = filename
-        print(image_data_store)
-        image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
-        print(image_data_store)
-    print(data_store)
-    return contents, json.dumps(data_store), image_data_store.to_json()
+    for content, filename in zip(contents, filenames):
+        print("========")
+        print(filename)
+        if filename not in image_data_store.filename:
+            circles_df = proc_image(content,data_store["threshold"])
+            circles_df["filename"] = filename
+            image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
+            print(image_data_store)
+    data_store["filename"] = filename
+    # if filename not in image_data_store.filename:
+    #     circles_df = proc_image(contents,data_store["threshold"])
+    #     circles_df["filename"] = filename
+    #     image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
+    #     print(image_data_store)
+    # print(data_store)
+    out_df = image_data_store.drop(columns=["colour_values"])
+    return content, json.dumps(data_store), image_data_store.to_json(), dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)
 
 @callback([Output("thresholded_annotated_image","src"),Output("unthresholded_annotated_image","src"),Output("histo","figure"),Output("box","figure")],
           [Input("submit_threshold","n_clicks")],
@@ -161,90 +239,6 @@ def push_circles(
     fig_hist.update_traces(opacity=0.75)
     fig_box.update_traces(opacity=0.75)
     return array_to_data_url(thresholded_image),array_to_data_url(unthresholded_image),fig_hist,fig_box
-
-# @callback(
-#     [Output("thresholded_annotated_image","src",allow_duplicate=True),Output("unthresholded_annotated_image", "src"),Output("histo", "figure"),Output("box", "figure"),Output("current_image_data", "data")],
-#     [Input("submit_threshold", "n_clicks"),Input("intermediate-value", "data")],
-#     [State("image", "src"),State("submit_threshold", "value")]
-# )
-# def push_circles(
-#     n_clicks,
-#     data,
-#     image_data_url,
-#     threshold
-# ):
-#     data = pd.read_json(data)
-#     image = data_url_to_array(image_data_url)
-#     print(image)
-#     _, thresholded_image_data, threshold_df = proc_image(image,threshold=threshold)
-#     _, unthresholded_image_data, _ = proc_image(image,threshold=1000000000)
-    
-#     fig_hist = go.Figure()
-#     fig_box = go.Figure()
-
-#     for filename in set(data.filename.values):
-#         fig_hist.add_trace(go.Histogram(x=data.query("filename == @filename").radius, name=filename,nbinsx=20))
-#         fig_box.add_trace(go.Box(x=data.query("filename == @filename").radius, name=filename))
-
-#     fig_hist.update_layout(
-#         title="Spheroid sizes",
-#         xaxis_title="Radius (pixels)",
-#         yaxis_title="Count",
-#         barmode="overlay"
-#     )
-#     fig_box.update_layout(
-#         title="Spheroid sizes",
-#         xaxis_title="Radius (pixels)"
-#     )
-
-#     fig_hist.update_traces(opacity=0.75)
-#     fig_box.update_traces(opacity=0.75)
-#     return thresholded_image_data[-1],unthresholded_image_data[-1],fig_hist,fig_box,threshold_df.to_json()
-
-# @callback([Output("thresholded_annotated_image","src",allow_duplicate=True),Output("unthresholded_annotated_image", "src"),Output("histo", "figure"),Output("box", "figure"),Output("current_image_data", "data")],
-#           Input("upload-image", "contents"),
-#           Input("intermediate-value", "data"),
-#           State("upload-image", "filename"),
-#           State("threshold_input", "value"),
-#           prevent_initial_call=True)
-# def update_output(list_of_contents, data, list_of_names, threshold):
-#     data = pd.read_json(data)
-#     _, thresholded_image_data, threshold_df = proc_image(list_of_contents,threshold=threshold)
-#     _, unthresholded_image_data, _ = proc_image(list_of_contents,threshold=1000000000)
-    
-#     fig_hist = go.Figure()
-#     fig_box = go.Figure()
-
-#     for filename in set(data.filename.values):
-#         fig_hist.add_trace(go.Histogram(x=data.query("filename == @filename").radius, name=filename,nbinsx=20))
-#         fig_box.add_trace(go.Box(x=data.query("filename == @filename").radius, name=filename))
-
-#     fig_hist.update_layout(
-#         title="Spheroid sizes",
-#         xaxis_title="Radius (pixels)",
-#         yaxis_title="Count",
-#         barmode="overlay"
-#     )
-#     fig_box.update_layout(
-#         title="Spheroid sizes",
-#         xaxis_title="Radius (pixels)"
-#     )
-
-#     fig_hist.update_traces(opacity=0.75)
-#     fig_box.update_traces(opacity=0.75)
-#     return thresholded_image_data[-1],unthresholded_image_data[-1],fig_hist,fig_box,threshold_df.to_json()
-
-# @callback(Output("thresholded_annotated_image","src",allow_duplicate=True),
-#           Input("current_image_data", "data"),
-#           Input("threshold_input", "value"),
-#           prevent_initial_call=True)
-# def redraw(data,threshold):
-#     try:
-#         uploaded_df = pd.read_json(data)
-#     except:
-#         return ""
-#     print(uploaded_df)
-#     return ""
 
 if __name__ == "__main__":
     app.run(debug=True)
