@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output, State, callback
+from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
 import cv2
 import base64
@@ -60,9 +60,7 @@ app.layout = html.Div([
             "borderWidth": "1px",
             "borderRadius": "5px",
             "textAlign": "right",
-            # "margin": "10px"
         }),
-    dcc.Download(id="download-dataframe-csv"),
     dcc.Tabs(
         id="main_tabs", 
         value="original_image", 
@@ -136,8 +134,30 @@ app.layout = html.Div([
                     id="box", 
                     figure=go.Figure()
                 )
-            ])
+            ]),
+        dcc.Tab(
+            label="Data", 
+            value="tables", 
+            children=[
+                html.Button(
+                    "Download processed data...", 
+                    id="download_proc", 
+                    n_clicks=0,
+                    style={
+                        "width": "100%",
+                        "height": "60px",
+                        "lineHeight": "60px",
+                        "borderWidth": "1px",
+                        "borderRadius": "5px",
+                        'text-align': 'center'
+                    }),
+                html.Div(id="slides_data_div")
+            ]
+        )
         ]),
+    dcc.Download(
+        id="download-dataframe-csv"
+    ),
     dcc.Store(
         id="data_store",
         data=json.dumps({
@@ -148,7 +168,8 @@ app.layout = html.Div([
     dcc.Store(
         id="image_data_store",
         data=json.dumps({
-            "filename":[]
+            "filename":[],
+            "colour_values":[]
         })
     ),
     dcc.Store(
@@ -172,10 +193,20 @@ def update_threshold(
     print(data_store)
     return json.dumps(data_store)
 
-@callback([Output("image","src"), Output("data_store","data", allow_duplicate=True), Output("image_data_store","data", allow_duplicate=True),Output("download-dataframe-csv", "data")],
-          [Input("upload-image", "contents")],
-          [State("upload-image", "filename"), State("data_store","data"), State("image_data_store","data")],
-          prevent_initial_call=True)
+@callback(
+        [
+            Output("image","src"), 
+            Output("data_store","data", allow_duplicate=True),
+            Output("image_data_store","data", allow_duplicate=True),
+            Output("slides_data_div","children")
+        ],[
+            Input("upload-image", "contents")
+        ],[
+            State("upload-image", "filename"), 
+            State("data_store","data"), 
+            State("image_data_store","data")
+        ],
+        prevent_initial_call=True)
 def push_image(
     contents,
     filenames,
@@ -185,22 +216,21 @@ def push_image(
     data_store = json_to_dict(data_store)
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
     for content, filename in zip(contents, filenames):
-        print("========")
-        print(filename)
         if filename not in image_data_store.filename:
             circles_df = proc_image(content,data_store["threshold"])
             circles_df["filename"] = filename
             image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
-            print(image_data_store)
     data_store["filename"] = filename
-    # if filename not in image_data_store.filename:
-    #     circles_df = proc_image(contents,data_store["threshold"])
-    #     circles_df["filename"] = filename
-    #     image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
-    #     print(image_data_store)
-    # print(data_store)
-    out_df = image_data_store.drop(columns=["colour_values"])
-    return content, json.dumps(data_store), image_data_store.to_json(), dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)
+    image_data_store["average_shade"] = [sum(x)/len(x) for x in image_data_store.colour_values]
+    image_data_store["confidence_shade"] = [(255-x)/255 for x in image_data_store.average_shade]
+    out_df = image_data_store.copy()
+    out_df["coordinate"] = [str(f"{int(x[0])},{int(x[1])}") for x in out_df.coordinate]
+    out_df = out_df.drop(columns=["colour_values"])
+    table = dash_table.DataTable(
+        out_df.to_dict("records"),
+        [{"name": i, "id": i} for i in out_df.columns]
+        )
+    return content, json.dumps(data_store), image_data_store.to_json(), table
 
 @callback([Output("thresholded_annotated_image","src"),Output("unthresholded_annotated_image","src"),Output("histo","figure"),Output("box","figure")],
           [Input("submit_threshold","n_clicks")],
@@ -211,9 +241,11 @@ def push_circles(
     data_store,
     image_data_store
 ):
+    print(image_data_store)
     data_store = json_to_dict(data_store)
     filename = data_store["filename"]
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+    print(image_data_store)
     current_df = image_data_store.query("filename == @filename").copy()
     thresholded_image = draw_circles(contents,current_df,data_store["threshold"])
     unthresholded_image = draw_circles(contents,current_df,99999999999999)
@@ -239,6 +271,17 @@ def push_circles(
     fig_hist.update_traces(opacity=0.75)
     fig_box.update_traces(opacity=0.75)
     return array_to_data_url(thresholded_image),array_to_data_url(unthresholded_image),fig_hist,fig_box
+
+@callback([Output("download-dataframe-csv", "data")],
+          [Input("download_proc","n_clicks")],
+          [State("image_data_store","data")])
+def download_processed_data(
+    n_clicks,
+    image_data_store
+):
+    image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+    out_df = image_data_store.drop(columns=["colour_values"])
+    return dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)
 
 if __name__ == "__main__":
     app.run(debug=True)
