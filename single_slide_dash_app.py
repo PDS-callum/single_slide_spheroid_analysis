@@ -200,65 +200,59 @@ def update_threshold(
     print(data_store)
     return json.dumps(data_store)
 
-# @callback(
-#     [
-#         Output("image","src"), 
-#         Output("data_store","data", allow_duplicate=True),
-#         Output("image_data_store","data", allow_duplicate=True),
-#         Output("slides_data_div","children")
-#     ],[
-#         Input("upload-image", "contents")
-#     ],[
-#         State("upload-image", "filename"), 
-#         State("data_store","data"), 
-#         State("image_data_store","data")
-#     ],
-#     prevent_initial_call=True
-# )
-# def push_image(
-#     contents,
-#     filenames,
-#     data_store,
-#     image_data_store
-# ):
-#     data_store = json_to_dict(data_store)
-#     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
-#     for content, filename in zip(contents, filenames):
-#         if filename not in image_data_store.filename:
-#             circles_df = proc_image(content,data_store["threshold"])
-#             circles_df["filename"] = filename
-#             image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
-#     data_store["filename"] = filename
-#     image_data_store["average_shade"] = [sum(x)/len(x) for x in image_data_store.colour_values]
-#     image_data_store["confidence_shade"] = [(255-x)/255 for x in image_data_store.average_shade]
-#     out_df = image_data_store.copy()
-#     out_df["coordinate"] = [str(f"{int(x[0])},{int(x[1])}") for x in out_df.coordinate]
-#     out_df = out_df.drop(columns=["colour_values"])
-#     table = dash_table.DataTable(
-#         out_df.to_dict("records"),
-#         [{"name": i, "id": i} for i in out_df.columns]
-#         )
-#     return content, json.dumps(data_store), image_data_store.to_json(), table
-
 @callback(
-    Output("test", 'figure'),
-    Input('upload-image', 'contents')
+    [
+        Output("test","figure"), 
+        Output("data_store","data", allow_duplicate=True),
+        Output("image_data_store","data", allow_duplicate=True),
+        Output("slides_data_div","children")
+    ],[
+        Input("upload-image", "contents")
+    ],[
+        State("upload-image", "filename"), 
+        State("data_store","data"), 
+        State("image_data_store","data")
+    ],
+    prevent_initial_call=True
 )
-def update_output(contents):
+def push_image(
+    contents,
+    filenames,
+    data_store,
+    image_data_store
+):
     if contents is not None:
-        content_type, content_string = contents[0].split(',')
+        data_store = json_to_dict(data_store)
+        image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+        for content, filename in zip(contents, filenames):
+            if filename not in image_data_store.filename:
+                circles_df = proc_image(content,data_store["threshold"])
+                circles_df["filename"] = filename
+                image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
+        content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
         try:
+            data_store["filename"] = filename
+            image_data_store["average_shade"] = [sum(x)/len(x) for x in image_data_store.colour_values]
+            image_data_store["confidence_shade"] = [(255-x)/255 for x in image_data_store.average_shade]
+            out_df = image_data_store.copy()
+            out_df["coordinate"] = [str(f"{int(x[0])},{int(x[1])}") for x in out_df.coordinate]
+            out_df = out_df.drop(columns=["colour_values"])
+            table = dash_table.DataTable(
+                out_df.to_dict("records"),
+                [{"name": i, "id": i} for i in out_df.columns]
+                )
             with io.BytesIO(decoded) as image_buffer:
                 img = Image.open(image_buffer)
                 fig = px.imshow(img)
                 fig.update_layout(
                     height=1080
                 )
-                return fig
+                return fig, json.dumps(data_store), image_data_store.to_json(), table
         except Exception as e:
             return go.Figure()
-    return go.Figure()
+    else:
+        return go.Figure()
 
 @callback(
     [
