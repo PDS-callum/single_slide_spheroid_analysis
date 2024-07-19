@@ -71,22 +71,8 @@ app.layout = html.Div([
                 label="Original image", 
                 value="original_image", 
                 children=[
-                    # html.Div(
-                    #     id="output-image-upload",
-                    #     children=[
-                    #         html.Img(
-                    #             id="image",
-                    #             src="", 
-                    #             style={
-                    #                 "height": "1000px"
-                    #             })], 
-                    #             style={
-                    #                 "display": "flex", 
-                    #                 "justify-content": "center", 
-                    #                 "align-items": "center"
-                    #             }),
                     dcc.Graph(
-                        id="test",
+                        id="output-image-upload",
                         figure=go.Figure()
                     ),
                     html.Div(id='output-container')
@@ -108,7 +94,11 @@ app.layout = html.Div([
                                 "display": "flex", 
                                 "justify-content": "center", 
                                 "align-items": "center"
-                            })
+                            }),
+                dcc.Graph(
+                    id="test1",
+                    figure=go.Figure()
+                )
         ]),
         dcc.Tab(
             label="Unthresholded image", 
@@ -127,7 +117,11 @@ app.layout = html.Div([
                                 "display": "flex", 
                                 "justify-content": "center", 
                                 "align-items": "center"
-                            })
+                            }),
+                dcc.Graph(
+                    id="test2",
+                    figure=go.Figure()
+                )
         ]),
         dcc.Tab(
             label="Histogram", 
@@ -202,7 +196,7 @@ def update_threshold(
 
 @callback(
     [
-        Output("test","figure"), 
+        Output("output-image-upload","figure"), 
         Output("data_store","data", allow_duplicate=True),
         Output("image_data_store","data", allow_duplicate=True),
         Output("slides_data_div","children")
@@ -232,7 +226,9 @@ def push_image(
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
         try:
-            data_store["filename"] = filename
+            data_store.update({
+                "filename":filename,
+                "loaded_image":content})
             image_data_store["average_shade"] = [sum(x)/len(x) for x in image_data_store.colour_values]
             image_data_store["confidence_shade"] = [(255-x)/255 for x in image_data_store.average_shade]
             out_df = image_data_store.copy()
@@ -250,14 +246,16 @@ def push_image(
                 )
                 return fig, json.dumps(data_store), image_data_store.to_json(), table
         except Exception as e:
-            return go.Figure()
+            return go.Figure(), json.dumps(data_store), image_data_store.to_json(), dash_table.DataTable()
     else:
-        return go.Figure()
+        return go.Figure(), json.dumps({}), pd.DataFrame().to_json(), dash_table.DataTable()
 
 @callback(
     [
-        Output("thresholded_annotated_image","src"),
-        Output("unthresholded_annotated_image","src"),
+        # Output("thresholded_annotated_image","src"),
+        # Output("unthresholded_annotated_image","src"),
+        Output("test1","figure"),
+        Output("test2","figure"),
         Output("histo","figure"),Output("box","figure")
     ],[
         Input("submit_threshold","n_clicks")
@@ -273,6 +271,7 @@ def push_circles(
     data_store,
     image_data_store
 ):
+    print("a")
     if not n_clicks:
         return "", "", go.Figure(), go.Figure()
     data_store = json_to_dict(data_store)
@@ -280,6 +279,7 @@ def push_circles(
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
     current_df = image_data_store.query("filename == @filename").copy()
     thresholded_image = draw_circles(contents,current_df,data_store["threshold"])
+    print(thresholded_image)
     unthresholded_image = draw_circles(contents,current_df,99999999999999)
     
     fig_hist = go.Figure()
