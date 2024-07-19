@@ -140,7 +140,7 @@ app.layout = html.Div([
             value="tables", 
             children=[
                 html.Button(
-                    "Download processed data...", 
+                    "...Download processed data...", 
                     id="download_proc", 
                     n_clicks=0,
                     style={
@@ -241,11 +241,11 @@ def push_circles(
     data_store,
     image_data_store
 ):
-    print(image_data_store)
+    if not n_clicks:
+        return "", "", go.Figure(), go.Figure()
     data_store = json_to_dict(data_store)
     filename = data_store["filename"]
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
-    print(image_data_store)
     current_df = image_data_store.query("filename == @filename").copy()
     thresholded_image = draw_circles(contents,current_df,data_store["threshold"])
     unthresholded_image = draw_circles(contents,current_df,99999999999999)
@@ -272,16 +272,19 @@ def push_circles(
     fig_box.update_traces(opacity=0.75)
     return array_to_data_url(thresholded_image),array_to_data_url(unthresholded_image),fig_hist,fig_box
 
-@callback([Output("download-dataframe-csv", "data")],
-          [Input("download_proc","n_clicks")],
-          [State("image_data_store","data")])
-def download_processed_data(
-    n_clicks,
-    image_data_store
-):
-    image_data_store = pd.DataFrame(json_to_dict(image_data_store))
-    out_df = image_data_store.drop(columns=["colour_values"])
-    return dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)
+# @callback([Output("download-dataframe-csv", "data")],
+#           [Input("download_proc","n_clicks")],
+#           [State("image_data_store","data")])
+# def download_processed_data(
+#     n_clicks,
+#     image_data_store
+# ):
+#     if not n_clicks:
+#         return {}
+#     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+#     out_df = image_data_store.drop(columns=["colour_values"])
+#     print(dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False))
+#     return dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)
 
 if __name__ == "__main__":
     app.run(debug=True)
