@@ -9,6 +9,8 @@ from dash_canvas.utils import array_to_data_url
 import plotly.graph_objects as go
 import json
 import pandas as pd
+import base64
+import io
 
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
@@ -69,20 +71,25 @@ app.layout = html.Div([
                 label="Original image", 
                 value="original_image", 
                 children=[
-                    html.Div(
-                        id="output-image-upload",
-                        children=[
-                            html.Img(
-                                id="image",
-                                src="", 
-                                style={
-                                    "height": "1000px"
-                                })], 
-                                style={
-                                    "display": "flex", 
-                                    "justify-content": "center", 
-                                    "align-items": "center"
-                                })
+                    # html.Div(
+                    #     id="output-image-upload",
+                    #     children=[
+                    #         html.Img(
+                    #             id="image",
+                    #             src="", 
+                    #             style={
+                    #                 "height": "1000px"
+                    #             })], 
+                    #             style={
+                    #                 "display": "flex", 
+                    #                 "justify-content": "center", 
+                    #                 "align-items": "center"
+                    #             }),
+                    dcc.Graph(
+                        id="test",
+                        figure=go.Figure()
+                    ),
+                    html.Div(id='output-container')
         ]),
         dcc.Tab(
             label="Thresholded image", 
@@ -193,48 +200,79 @@ def update_threshold(
     print(data_store)
     return json.dumps(data_store)
 
-@callback(
-        [
-            Output("image","src"), 
-            Output("data_store","data", allow_duplicate=True),
-            Output("image_data_store","data", allow_duplicate=True),
-            Output("slides_data_div","children")
-        ],[
-            Input("upload-image", "contents")
-        ],[
-            State("upload-image", "filename"), 
-            State("data_store","data"), 
-            State("image_data_store","data")
-        ],
-        prevent_initial_call=True)
-def push_image(
-    contents,
-    filenames,
-    data_store,
-    image_data_store
-):
-    data_store = json_to_dict(data_store)
-    image_data_store = pd.DataFrame(json_to_dict(image_data_store))
-    for content, filename in zip(contents, filenames):
-        if filename not in image_data_store.filename:
-            circles_df = proc_image(content,data_store["threshold"])
-            circles_df["filename"] = filename
-            image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
-    data_store["filename"] = filename
-    image_data_store["average_shade"] = [sum(x)/len(x) for x in image_data_store.colour_values]
-    image_data_store["confidence_shade"] = [(255-x)/255 for x in image_data_store.average_shade]
-    out_df = image_data_store.copy()
-    out_df["coordinate"] = [str(f"{int(x[0])},{int(x[1])}") for x in out_df.coordinate]
-    out_df = out_df.drop(columns=["colour_values"])
-    table = dash_table.DataTable(
-        out_df.to_dict("records"),
-        [{"name": i, "id": i} for i in out_df.columns]
-        )
-    return content, json.dumps(data_store), image_data_store.to_json(), table
+# @callback(
+#     [
+#         Output("image","src"), 
+#         Output("data_store","data", allow_duplicate=True),
+#         Output("image_data_store","data", allow_duplicate=True),
+#         Output("slides_data_div","children")
+#     ],[
+#         Input("upload-image", "contents")
+#     ],[
+#         State("upload-image", "filename"), 
+#         State("data_store","data"), 
+#         State("image_data_store","data")
+#     ],
+#     prevent_initial_call=True
+# )
+# def push_image(
+#     contents,
+#     filenames,
+#     data_store,
+#     image_data_store
+# ):
+#     data_store = json_to_dict(data_store)
+#     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+#     for content, filename in zip(contents, filenames):
+#         if filename not in image_data_store.filename:
+#             circles_df = proc_image(content,data_store["threshold"])
+#             circles_df["filename"] = filename
+#             image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
+#     data_store["filename"] = filename
+#     image_data_store["average_shade"] = [sum(x)/len(x) for x in image_data_store.colour_values]
+#     image_data_store["confidence_shade"] = [(255-x)/255 for x in image_data_store.average_shade]
+#     out_df = image_data_store.copy()
+#     out_df["coordinate"] = [str(f"{int(x[0])},{int(x[1])}") for x in out_df.coordinate]
+#     out_df = out_df.drop(columns=["colour_values"])
+#     table = dash_table.DataTable(
+#         out_df.to_dict("records"),
+#         [{"name": i, "id": i} for i in out_df.columns]
+#         )
+#     return content, json.dumps(data_store), image_data_store.to_json(), table
 
-@callback([Output("thresholded_annotated_image","src"),Output("unthresholded_annotated_image","src"),Output("histo","figure"),Output("box","figure")],
-          [Input("submit_threshold","n_clicks")],
-          [State("image","src"), State("data_store","data"), State("image_data_store","data")])
+@callback(
+    Output("test", 'figure'),
+    Input('upload-image', 'contents')
+)
+def update_output(contents):
+    if contents is not None:
+        content_type, content_string = contents[0].split(',')
+        decoded = base64.b64decode(content_string)
+        try:
+            with io.BytesIO(decoded) as image_buffer:
+                img = Image.open(image_buffer)
+                fig = px.imshow(img)
+                fig.update_layout(
+                    height=1080
+                )
+                return fig
+        except Exception as e:
+            return go.Figure()
+    return go.Figure()
+
+@callback(
+    [
+        Output("thresholded_annotated_image","src"),
+        Output("unthresholded_annotated_image","src"),
+        Output("histo","figure"),Output("box","figure")
+    ],[
+        Input("submit_threshold","n_clicks")
+    ],[
+        State("image","src"), 
+        State("data_store","data"), 
+        State("image_data_store","data")
+    ]
+)
 def push_circles(
     n_clicks,
     contents,
@@ -291,6 +329,51 @@ def download_processed_data(
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
     out_df = image_data_store.drop(columns=["colour_values"])
     return [dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)]
+
+@app.callback(
+    [
+        Output('output-container', 'children')
+    ],[
+        Input('image', 'n_clicks')
+    ],[
+        State('image', 'src'),
+        State('image', 'clickData')
+    ]
+)
+def measure_distance(n_clicks, image, test):
+    if image is None:
+        return
+
+    print(n_clicks)
+    print(test)
+
+    if n_clicks == 0:
+        return []
+
+    # Code for click and drag functionality
+    if n_clicks == 1:
+        # Store starting point on first click
+        x_start, y_start = dash.callback_context.triggered[0]['prop_id'].split('.')[0].split('-')[-2:]
+        print(x_start)
+        return f"Click at ({x_start}, {y_start})"
+    elif n_clicks == 2:
+        # Calculate distance on second click
+        x_end, y_end = dash.callback_context.triggered[0]['prop_id'].split('.')[0].split('-')[-2:]
+        x_start, y_start = output.split()[1][1:-1].split(',')  # Extract starting point from previous output
+        start_point = (int(x_start), int(y_start))
+        end_point = (int(x_end), int(y_end))
+
+        # Calculate distance using a chosen metric (e.g., Euclidean distance)
+        distance = np.linalg.norm(np.array(start_point) - np.array(end_point))
+
+        # Optional: Draw line on the image (requires further implementation)
+        # image_copy = image.copy()
+        # cv2.line(image_copy, start_point, end_point, (0, 255, 0), 2)
+
+        return [f"Distance: {distance:.2f}"]
+
+    return []  # Maintain previous output for multi-click scenarios
+
 
 if __name__ == "__main__":
     app.run(debug=True)
