@@ -272,19 +272,25 @@ def push_circles(
     fig_box.update_traces(opacity=0.75)
     return array_to_data_url(thresholded_image),array_to_data_url(unthresholded_image),fig_hist,fig_box
 
-# @callback([Output("download-dataframe-csv", "data")],
-#           [Input("download_proc","n_clicks")],
-#           [State("image_data_store","data")])
-# def download_processed_data(
-#     n_clicks,
-#     image_data_store
-# ):
-#     if not n_clicks:
-#         return {}
-#     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
-#     out_df = image_data_store.drop(columns=["colour_values"])
-#     print(dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False))
-#     return dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)
+@callback(
+        [
+            Output("download-dataframe-csv", "data")
+        ],
+        [
+            Input("download_proc","n_clicks")
+        ],
+        [
+            State("image_data_store","data")
+        ],
+        prevent_initial_call=True
+    )
+def download_processed_data(
+    n_clicks,
+    image_data_store
+):
+    image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+    out_df = image_data_store.drop(columns=["colour_values"])
+    return [dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)]
 
 if __name__ == "__main__":
     app.run(debug=True)
