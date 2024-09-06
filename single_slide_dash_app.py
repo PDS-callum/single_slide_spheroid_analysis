@@ -11,6 +11,7 @@ import json
 import pandas as pd
 import base64
 import io
+import math
 
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
@@ -34,35 +35,7 @@ app.layout = html.Div([
             "textAlign": "center",
             "margin": "10px"
         }),
-    dcc.Input(
-        id="threshold_input",
-        type="number",
-        min=0,
-        placeholder="threshhold",
-        debounce=True,
-        value=26,
-        style={
-            "width": "80%",
-            "height": "60px",
-            "lineHeight": "60px",
-            "borderWidth": "1px",
-            "borderStyle": "dashed",
-            "borderRadius": "5px",
-            "textAlign": "center",
-            "margin": "10px"
-        }),
-    html.Button(
-        "Find circles...", 
-        id="submit_threshold", 
-        n_clicks=0,
-        style={
-            "width": "18%",
-            "height": "60px",
-            "lineHeight": "60px",
-            "borderWidth": "1px",
-            "borderRadius": "5px",
-            "textAlign": "right",
-        }),
+    html.P("No scale set. Click start and stop of scale bar.", id="scale_text"),
     dcc.Tabs(
         id="main_tabs", 
         value="original_image", 
@@ -77,85 +50,126 @@ app.layout = html.Div([
                     ),
                     html.Div(id='output-container')
         ]),
-        dcc.Tab(
-            label="Thresholded image", 
-            value="threshold_image", 
-            children=[
-                html.Div(
-                    id="thresholded-output-image-upload",
-                    children=[
-                        html.Img(
-                            id="thresholded_annotated_image",
-                            src="", 
-                            style={
-                                "height": "1000px"
-                            })], 
-                            style={
-                                "display": "flex", 
-                                "justify-content": "center", 
-                                "align-items": "center"
-                            }),
-                dcc.Graph(
-                    id="test1",
-                    figure=go.Figure()
-                )
-        ]),
-        dcc.Tab(
-            label="Unthresholded image", 
-            value="unthreshold_image", 
-            children=[
-                html.Div(
-                    id="unthresholded-output-image-upload",
-                    children=[
-                        html.Img(
-                            id="unthresholded_annotated_image",
-                            src="", 
-                            style={
-                                "height": "1000px"
-                            })], 
-                            style={
-                                "display": "flex", 
-                                "justify-content": "center", 
-                                "align-items": "center"
-                            }),
-                dcc.Graph(
-                    id="test2",
-                    figure=go.Figure()
-                )
-        ]),
-        dcc.Tab(
-            label="Histogram", 
-            value="graphs", 
-            children=[
-                dcc.Graph(
-                    id="histo",
-                    figure=go.Figure()
-                ),
-                dcc.Graph(
-                    id="box", 
-                    figure=go.Figure()
-                )
+            dcc.Tab(
+                label="Annotations", 
+                value="annotations", 
+                children=[
+                    dcc.Input(
+                        id="threshold_input",
+                        type="number",
+                        min=0,
+                        placeholder="threshhold",
+                        debounce=True,
+                        value=26,
+                        style={
+                            "width": "80%",
+                            "height": "60px",
+                            "lineHeight": "60px",
+                            "borderWidth": "1px",
+                            "borderStyle": "dashed",
+                            "borderRadius": "5px",
+                            "textAlign": "center",
+                            "margin": "10px"
+                        }),
+                    html.Button(
+                        "Find circles...", 
+                        id="submit_threshold", 
+                        n_clicks=0,
+                        style={
+                            "width": "18%",
+                            "height": "60px",
+                            "lineHeight": "60px",
+                            "borderWidth": "1px",
+                            "borderRadius": "5px",
+                            "textAlign": "right",
+                        }), 
+                    dcc.Tabs(
+                        id="annotations_tabs", 
+                        value="threshold_image", 
+                        children=[
+                            dcc.Tab(
+                                label="Thresholded image", 
+                                value="threshold_image", 
+                                children=[
+                                    html.Div(
+                                        id="threshold_img_div",
+                                        style={
+                                            "display": "flex", 
+                                            "justify-content": "center", 
+                                            "align-items": "center"
+                                        },
+                                        children=[
+                                            html.Img(
+                                                id="threshold_img",
+                                                src="", 
+                                                style={
+                                                    "height": "1000px"
+                                                }
+                                            )
+                                        ]
+                                    )
+                                ]
+                            ),
+                            dcc.Tab(
+                                label="Unhresholded image", 
+                                value="unthreshold_image", 
+                                children=[
+                                    html.Div(
+                                        id="unthreshold_img_div",
+                                        style={
+                                            "display": "flex", 
+                                            "justify-content": "center", 
+                                            "align-items": "center"
+                                        },
+                                        children=[
+                                            html.Img(
+                                                id="unthreshold_img",
+                                                src="", 
+                                                style={
+                                                    "height": "1000px"
+                                                }
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
+                        ]
+                    )
+                ]
+            ),
+            dcc.Tab(
+                label="Histogram", 
+                value="graphs", 
+                children=[
+                    dcc.Graph(
+                        id="histo",
+                        figure=go.Figure()
+                    ),
+                    dcc.Graph(
+                        id="box", 
+                        figure=go.Figure()
+                    )
+                ]),
+            dcc.Tab(
+                label="Data", 
+                value="tables", 
+                children=[
+                    html.Button(
+                        "...Download processed data...", 
+                        id="download_proc", 
+                        n_clicks=0,
+                        style={
+                            "width": "100%",
+                            "height": "60px",
+                            "lineHeight": "60px",
+                            "borderWidth": "1px",
+                            "borderRadius": "5px",
+                            'text-align': 'center'
+                        }),
+                    html.Div(id="slides_data_div")
+                ]
+            )
             ]),
-        dcc.Tab(
-            label="Data", 
-            value="tables", 
-            children=[
-                html.Button(
-                    "...Download processed data...", 
-                    id="download_proc", 
-                    n_clicks=0,
-                    style={
-                        "width": "100%",
-                        "height": "60px",
-                        "lineHeight": "60px",
-                        "borderWidth": "1px",
-                        "borderRadius": "5px",
-                        'text-align': 'center'
-                    }),
-                html.Div(id="slides_data_div")
-            ]
-        )
-        ]),
     dcc.Download(
         id="download-dataframe-csv"
     ),
@@ -180,10 +194,10 @@ app.layout = html.Div([
 ])
 
 @callback(
-        Output("data_store","data", allow_duplicate=True),
-        Input("threshold_input","value"),
-        State("data_store","data"),
-        prevent_initial_call=True
+    Output("data_store","data", allow_duplicate=True),
+    Input("threshold_input","value"),
+    State("data_store","data"),
+    prevent_initial_call=True
 )
 def update_threshold(
     threshold,
@@ -191,15 +205,47 @@ def update_threshold(
 ):
     data_store = json_to_dict(data_store)
     data_store["threshold"] = threshold
-    print(data_store)
     return json.dumps(data_store)
+
+@callback(
+    [
+        Output("scale_text","children"),
+        Output("data_store","data", allow_duplicate=True),
+        Output("image_data_store","data")
+    ],
+    Input("output-image-upload","clickData"),
+    [
+        State("data_store","data"),
+        State("image_data_store","data")
+    ],prevent_initial_call = True
+)
+def get_coord(click_data,data_store,image_data_store):
+    data_store = json_to_dict(data_store)
+    image_data_store = pd.DataFrame(json_to_dict(image_data_store))
+    def scale_radius(x):
+        return round((x/data_store["scale"])*500,2)
+    try:
+        data_store["clicks"]+=1
+    except:
+        data_store["clicks"]=1
+    if data_store["clicks"]%2 == 0:
+        delta_x = abs(data_store["prev_click"]["points"][0]["x"] - click_data["points"][0]["x"])
+        delta_y = abs(data_store["prev_click"]["points"][0]["y"] - click_data["points"][0]["y"])
+        data_store["scale"] = delta_x
+        image_data_store["microm_radius"] = image_data_store["radius"].apply(scale_radius)
+        return "Scale set!",json.dumps(data_store),image_data_store.to_json()
+    else:
+        data_store["prev_click"] = click_data
+        return "No scale set. Click start and stop of scale bar.",json.dumps(data_store),image_data_store.to_json()
 
 @callback(
     [
         Output("output-image-upload","figure"), 
         Output("data_store","data", allow_duplicate=True),
         Output("image_data_store","data", allow_duplicate=True),
-        Output("slides_data_div","children")
+        Output("slides_data_div","children"),
+        Output("threshold_img","src",allow_duplicate=True),
+        Output("unthreshold_img","src",allow_duplicate=True)
     ],[
         Input("upload-image", "contents")
     ],[
@@ -222,6 +268,7 @@ def push_image(
             if filename not in image_data_store.filename:
                 circles_df = proc_image(content,data_store["threshold"])
                 circles_df["filename"] = filename
+                print(circles_df)
                 image_data_store = pd.concat([image_data_store,circles_df]).reset_index(drop=True)
         content_type, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
@@ -244,26 +291,25 @@ def push_image(
                 fig.update_layout(
                     height=1080
                 )
-                return fig, json.dumps(data_store), image_data_store.to_json(), table
+                return fig, json.dumps(data_store), image_data_store.to_json(), table, content, content
         except Exception as e:
-            return go.Figure(), json.dumps(data_store), image_data_store.to_json(), dash_table.DataTable()
+            return go.Figure(), json.dumps(data_store), image_data_store.to_json(), dash_table.DataTable(), "", ""
     else:
-        return go.Figure(), json.dumps({}), pd.DataFrame().to_json(), dash_table.DataTable()
+        return go.Figure(), json.dumps({}), pd.DataFrame().to_json(), dash_table.DataTable(), "", ""
 
 @callback(
     [
-        # Output("thresholded_annotated_image","src"),
-        # Output("unthresholded_annotated_image","src"),
-        Output("test1","figure"),
-        Output("test2","figure"),
+        Output("threshold_img","src",allow_duplicate=True),
+        Output("unthreshold_img","src",allow_duplicate=True),
         Output("histo","figure"),Output("box","figure")
     ],[
         Input("submit_threshold","n_clicks")
     ],[
-        State("image","src"), 
+        State("threshold_img","src"), 
         State("data_store","data"), 
         State("image_data_store","data")
-    ]
+    ],
+    prevent_initial_call=True
 )
 def push_circles(
     n_clicks,
@@ -271,10 +317,10 @@ def push_circles(
     data_store,
     image_data_store
 ):
-    print("a")
     if not n_clicks:
         return "", "", go.Figure(), go.Figure()
     data_store = json_to_dict(data_store)
+
     filename = data_store["filename"]
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
     current_df = image_data_store.query("filename == @filename").copy()
@@ -286,12 +332,12 @@ def push_circles(
     fig_box = go.Figure()
 
     for filename in set(image_data_store.filename.values):
-        fig_hist.add_trace(go.Histogram(x=image_data_store.query("filename == @filename").radius, name=filename,nbinsx=20))
-        fig_box.add_trace(go.Box(x=image_data_store.query("filename == @filename").radius, name=filename))
+        fig_hist.add_trace(go.Histogram(x=image_data_store.query("filename == @filename").microm_radius, name=filename,nbinsx=20))
+        fig_box.add_trace(go.Box(x=image_data_store.query("filename == @filename").microm_radius, name=filename))
 
     fig_hist.update_layout(
         title="Spheroid sizes",
-        xaxis_title="Radius (pixels)",
+        xaxis_title="Radius (um)",
         yaxis_title="Count",
         barmode="overlay"
     )
@@ -320,54 +366,10 @@ def download_processed_data(
     n_clicks,
     image_data_store
 ):
+    print(3)
     image_data_store = pd.DataFrame(json_to_dict(image_data_store))
     out_df = image_data_store.drop(columns=["colour_values"])
     return [dcc.send_data_frame(out_df.to_csv, "processed_data.csv", index=False)]
-
-@app.callback(
-    [
-        Output('output-container', 'children')
-    ],[
-        Input('image', 'n_clicks')
-    ],[
-        State('image', 'src'),
-        State('image', 'clickData')
-    ]
-)
-def measure_distance(n_clicks, image, test):
-    if image is None:
-        return
-
-    print(n_clicks)
-    print(test)
-
-    if n_clicks == 0:
-        return []
-
-    # Code for click and drag functionality
-    if n_clicks == 1:
-        # Store starting point on first click
-        x_start, y_start = dash.callback_context.triggered[0]['prop_id'].split('.')[0].split('-')[-2:]
-        print(x_start)
-        return f"Click at ({x_start}, {y_start})"
-    elif n_clicks == 2:
-        # Calculate distance on second click
-        x_end, y_end = dash.callback_context.triggered[0]['prop_id'].split('.')[0].split('-')[-2:]
-        x_start, y_start = output.split()[1][1:-1].split(',')  # Extract starting point from previous output
-        start_point = (int(x_start), int(y_start))
-        end_point = (int(x_end), int(y_end))
-
-        # Calculate distance using a chosen metric (e.g., Euclidean distance)
-        distance = np.linalg.norm(np.array(start_point) - np.array(end_point))
-
-        # Optional: Draw line on the image (requires further implementation)
-        # image_copy = image.copy()
-        # cv2.line(image_copy, start_point, end_point, (0, 255, 0), 2)
-
-        return [f"Distance: {distance:.2f}"]
-
-    return []  # Maintain previous output for multi-click scenarios
-
 
 if __name__ == "__main__":
     app.run(debug=True)

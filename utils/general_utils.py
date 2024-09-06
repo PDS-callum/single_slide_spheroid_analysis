@@ -163,7 +163,7 @@ def plot_circles(
         x = x/len(row.colour_values)
         if x < threshold:
             cv2.circle(image, row.coordinate, int(row.radius), (255, 0, 0), 2)
-            label = f"{row.radius}"
+            label = f"{row.microm_radius}"
             cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
     return image
 
