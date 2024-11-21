@@ -162,4 +162,5 @@ cython_debug/
 #.idea/
 
 centriole_test_data/*
-.test_images/*
+.test_images
+*testing*

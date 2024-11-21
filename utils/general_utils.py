@@ -18,25 +18,29 @@ def json_to_dict(data_store):
 def proc_blur_image(contents):
     in_img = data_uri_to_cv2_img(contents)
     gray_img = gray(in_img)
-    blurred_img = blur(gray_img,11,type="median")
-    return blurred_img
+    # ret,blurred_img = cv2.threshold(gray_img,100,255,cv2.THRESH_BINARY_INV)
+    # blurred_img = blur(gray_img,11,type="median")
+    return gray_img
 
 def proc_image(contents,threshold):
     blurred_img = proc_blur_image(contents)
     circles_df = find_circles(
         image=blurred_img,
         method=cv2.HOUGH_GRADIENT, 
-        dp=1, 
-        minDist=100,
-        param1=20, 
-        param2=30, 
+        dp=1.2, 
+        minDist=20,
+        param1=10, 
+        param2=40, 
         minRadius=25, 
         maxRadius=100
     )
     return circles_df
 
-def draw_circles(contents,circles_df,threshold):
-    blurred_img = proc_blur_image(contents)
+def draw_circles(contents,circles_df,threshold,skip_blur=False):
+    if not skip_blur:
+        blurred_img = proc_blur_image(contents)
+    else:
+        blurred_img = contents
     annotated_img = plot_circles(
         blurred_img,
         circles_df,
@@ -113,6 +117,7 @@ def find_circles(
         minRadius,
         maxRadius
 ):
+    print(image)
     circles = cv2.HoughCircles(
         image=image, 
         method=method, 
@@ -123,6 +128,7 @@ def find_circles(
         minRadius=minRadius, 
         maxRadius=maxRadius
     )
+    print(circles)
 
     _, binary_image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
 
@@ -163,8 +169,11 @@ def plot_circles(
         x = x/len(row.colour_values)
         if x < threshold:
             cv2.circle(image, row.coordinate, int(row.radius), (255, 0, 0), 2)
-            label = f"{row.microm_radius}"
-            cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
+            try:
+                label = f"{row.microm_radius}"
+                cv2.putText(image, label, (row.coordinate[0] - int(row.radius/2), row.coordinate[1] + int(row.radius/2)), font, 1, (0,0,255), 2)
+            except:
+                pass
     return image
 
 def plot(
